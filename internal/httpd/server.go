@@ -24,6 +24,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -1234,7 +1235,6 @@ func (s *httpdServer) mustCheckPath(r *http.Request) bool {
 }
 
 func (s *httpdServer) initializeRouter() {
-	var hasHTTPSRedirect bool
 	s.tokenAuth = jwtauth.New(jwa.HS256.String(), getSigningKey(s.signingPassphrase), nil)
 	s.router = chi.NewRouter()
 
@@ -1261,7 +1261,6 @@ func (s *httpdServer) initializeRouter() {
 		s.router.Use(secureMiddleware.Handler)
 		if s.binding.Security.HTTPSRedirect {
 			s.router.Use(s.binding.Security.redirectHandler)
-			hasHTTPSRedirect = true
 		}
 	}
 	if s.cors.Enabled {
@@ -1287,10 +1286,8 @@ func (s *httpdServer) initializeRouter() {
 		render.PlainText(w, r, "ok")
 	})
 
-	if hasHTTPSRedirect {
-		if p := acme.GetHTTP01WebRoot(); p != "" {
-			serveStaticDir(s.router, acmeChallengeURI, p, true)
-		}
+	if p := acme.GetHTTP01WebRoot(); p != "" {
+		serveStaticDir(s.router, acmeChallengeURI, path.Join(p, acmeChallengeURI), true)
 	}
 
 	if s.enableRESTAPI {
